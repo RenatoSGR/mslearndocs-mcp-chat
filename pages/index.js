@@ -248,7 +248,7 @@ export default function ChatPage() {
                                     type="text"
                                     value={input}
                                     onChange={(e) => setInput(e.target.value)}
-                                    placeholder="Ask about Azure, .NET, Power Platform, etc..."
+                                    placeholder="Ask about Azure, Dev Tools, AI, Data, etc..."
                                     className="flex-1 p-4 bg-gray-800/80 backdrop-blur-sm rounded-2xl border border-gray-600/50 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500/50 transition-all duration-200 text-white placeholder-gray-400 shadow-inner"
                                     disabled={isLoading}
                                 />
