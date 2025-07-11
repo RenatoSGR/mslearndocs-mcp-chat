@@ -7,14 +7,17 @@ const useMcp = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
 
-    const sendMessage = async (message) => {
+    const sendMessage = async (message, conversationHistory = []) => {
         setIsLoading(true);
         setError(null);
         try {
             const response = await fetch('/api/mcp', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ message }),
+                body: JSON.stringify({ 
+                    message,
+                    conversationHistory 
+                }),
             });
 
             if (!response.ok) {
@@ -48,16 +51,22 @@ export default function ChatPage() {
         scrollToBottom();
     }, [messages]);
 
+    const clearConversation = () => {
+        setMessages([{ text: "Hello! I can search the official Microsoft Learn documentation. What would you like to know?", sender: 'ai' }]);
+    };
+
     const handleSend = async (e) => {
         e.preventDefault();
         if (!input.trim()) return;
 
         const userMessage = { text: input, sender: 'user' };
-        setMessages(prev => [...prev, userMessage]);
+        const updatedMessages = [...messages, userMessage];
+        setMessages(updatedMessages);
         setInput('');
 
         try {
-            const aiResponseText = await sendMessage(input);
+            // Pass the updated conversation history (including the new user message)
+            const aiResponseText = await sendMessage(input, updatedMessages);
             const aiMessage = { text: aiResponseText, sender: 'ai' };
             setMessages(prev => [...prev, aiMessage]);
         } catch (error) {
@@ -177,7 +186,16 @@ export default function ChatPage() {
                                         Powered by Microsoft Learn MCP Server
                                     </p>
                                 </div>
-                                <RightLogo />
+                                <div className="flex items-center gap-4">
+                                    <button
+                                        onClick={clearConversation}
+                                        className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-lg hover:bg-white/20 transition-all duration-200 text-white text-sm font-medium border border-white/20 hover:border-white/30"
+                                        title="Clear conversation history"
+                                    >
+                                        Clear Chat
+                                    </button>
+                                    <RightLogo />
+                                </div>
                             </div>
                         </header>
 
@@ -243,6 +261,14 @@ export default function ChatPage() {
 
                         {/* Input Area */}
                         <div className="p-6 border-t border-gray-700/50 bg-gradient-to-r from-gray-800/90 to-gray-700/90 backdrop-blur-sm">
+                            {/* Conversation Context Indicator */}
+                            {messages.length > 2 && (
+                                <div className="mb-3 text-center">
+                                    <span className="text-xs text-gray-400 bg-gray-800/50 px-3 py-1 rounded-full border border-gray-600/30">
+                                        💬 Conversation context: {messages.length - 1} messages
+                                    </span>
+                                </div>
+                            )}
                             <form onSubmit={handleSend} className="flex items-center space-x-4">
                                 <input
                                     type="text"
