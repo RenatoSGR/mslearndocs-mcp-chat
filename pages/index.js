@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import Head from 'next/head';
 import Image from 'next/image';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 
 // Custom hook for communication with our own backend API route
 const useMcp = () => {
@@ -120,42 +122,84 @@ export default function ChatPage() {
 
 
 
-    // Function to parse markdown-style links
-    const parseMessageWithLinks = (text) => {
+    // Custom markdown components for styling
+    const markdownComponents = {
+        // Style headings
+        h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-3 text-blue-200" {...props} />,
+        h2: ({node, ...props}) => <h2 className="text-xl font-bold mb-2 text-blue-200" {...props} />,
+        h3: ({node, ...props}) => <h3 className="text-lg font-bold mb-2 text-blue-200" {...props} />,
+        h4: ({node, ...props}) => <h4 className="text-base font-bold mb-1 text-blue-200" {...props} />,
+        h5: ({node, ...props}) => <h5 className="text-sm font-bold mb-1 text-blue-200" {...props} />,
+        h6: ({node, ...props}) => <h6 className="text-xs font-bold mb-1 text-blue-200" {...props} />,
+        
+        // Style paragraphs
+        p: ({node, ...props}) => <p className="mb-3 leading-relaxed" {...props} />,
+        
+        // Style links
+        a: ({node, ...props}) => (
+            <a
+                className="text-blue-400 hover:text-blue-300 underline font-medium bg-blue-500/10 px-1 py-0.5 rounded transition-colors"
+                target="_blank"
+                rel="noopener noreferrer"
+                {...props}
+            />
+        ),
+        
+        // Style lists
+        ul: ({node, ...props}) => <ul className="mb-3 pl-6 space-y-1 list-disc" {...props} />,
+        ol: ({node, ...props}) => <ol className="mb-3 pl-6 space-y-1 list-decimal" {...props} />,
+        li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
+        
+        // Style code blocks and inline code
+        code: ({node, inline, ...props}) => 
+            inline ? (
+                <code className="bg-gray-800/60 text-blue-300 px-1.5 py-0.5 rounded text-sm font-mono border border-gray-600/30" {...props} />
+            ) : (
+                <pre className="bg-gray-800/60 text-blue-300 p-3 rounded-lg mb-3 overflow-x-auto border border-gray-600/30">
+                    <code className="font-mono text-sm" {...props} />
+                </pre>
+            ),
+        
+        // Style blockquotes
+        blockquote: ({node, ...props}) => (
+            <blockquote className="border-l-4 border-blue-400/50 pl-4 py-2 mb-3 bg-blue-500/5 italic text-blue-200" {...props} />
+        ),
+        
+        // Style tables
+        table: ({node, ...props}) => (
+            <div className="overflow-x-auto mb-3">
+                <table className="min-w-full border border-gray-600/30 rounded-lg overflow-hidden" {...props} />
+            </div>
+        ),
+        th: ({node, ...props}) => (
+            <th className="bg-gray-700/50 border border-gray-600/30 px-3 py-2 text-left font-medium text-blue-200" {...props} />
+        ),
+        td: ({node, ...props}) => (
+            <td className="bg-gray-800/30 border border-gray-600/30 px-3 py-2" {...props} />
+        ),
+        
+        // Style horizontal rules
+        hr: ({node, ...props}) => <hr className="border-gray-600/30 my-4" {...props} />,
+        
+        // Style strong and emphasis
+        strong: ({node, ...props}) => <strong className="font-bold text-blue-200" {...props} />,
+        em: ({node, ...props}) => <em className="italic text-blue-200" {...props} />,
+    };
+
+    // Function to render message content with markdown support
+    const renderMessageContent = (text) => {
         if (!text || typeof text !== 'string') {
             return text;
         }
 
-        const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
-        const parts = [];
-        let lastIndex = 0;
-        let match;
-
-        while ((match = linkRegex.exec(text)) !== null) {
-            if (match.index > lastIndex) {
-                parts.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex, match.index)}</span>);
-            }
-
-            parts.push(
-                <a
-                    key={`link-${match.index}`}
-                    href={match[2]}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-blue-400 hover:text-blue-300 underline font-medium bg-blue-500/10 px-1 py-0.5 rounded transition-colors"
-                >
-                    {match[1]}
-                </a>
-            );
-
-            lastIndex = match.index + match[0].length;
-        }
-
-        if (lastIndex < text.length) {
-            parts.push(<span key={`text-${lastIndex}`}>{text.substring(lastIndex)}</span>);
-        }
-
-        return parts.length > 0 ? parts : <span>{text}</span>;
+        return (
+            <ReactMarkdown 
+                remarkPlugins={[remarkGfm]}
+                components={markdownComponents}
+            >
+                {text}
+            </ReactMarkdown>
+        );
     };
 
     return (
@@ -220,7 +264,7 @@ export default function ChatPage() {
                                                 : 'bg-gradient-to-r from-gray-700/90 to-gray-600/90 border-gray-500/30 rounded-bl-none hover:from-gray-600/90 hover:to-gray-500/90 transition-all duration-200'
                                         }`}
                                     >
-                                        <div className="text-white">{parseMessageWithLinks(msg.text)}</div>
+                                        <div className="text-white">{renderMessageContent(msg.text)}</div>
                                     </div>
                                     {msg.sender === 'user' && (
                                         <div className="p-3 bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full shadow-lg border border-indigo-400/30">
