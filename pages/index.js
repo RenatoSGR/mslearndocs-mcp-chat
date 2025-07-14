@@ -93,8 +93,8 @@ export default function ChatPage() {
     //     </div>
       const LeftLogo = () => (
           <Image
-              src="/cblogger.png"
-              alt="CloudBlogger"
+              src="/mcp.png"
+              alt="MCP Logo"
               width={52}
               height={48}
               className="w-14 h-12 rounded-xl shadow-lg"
@@ -109,7 +109,7 @@ export default function ChatPage() {
     // );
       const RightLogo = () => (
           <Image
-              src="/cpilot.png"
+              src="/msdocs.png"
               alt="Microsoft"
               width={54}
               height={48}
@@ -161,9 +161,9 @@ export default function ChatPage() {
     return (
         <>
             <Head>
-                <title>MS Learn AI Chat</title>
+                <title>MS Learn Docs AI Chat</title>
                 <meta name="description" content="Chat with an AI to search Microsoft Learn documentation." />
-                <link rel="icon" href="/favicon.ico" />
+                <link rel="icon" href="/msft.ico" />
             </Head>
             
             <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex flex-col">
@@ -183,7 +183,7 @@ export default function ChatPage() {
                                         MS Learn AI Assistant
                                     </h1>
                                     <p className="text-sm text-blue-100/80 mt-1 font-medium">
-                                        Powered by Microsoft Learn MCP Server
+                                        Powered by Microsoft Learn Docs MCP Server
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-4">
