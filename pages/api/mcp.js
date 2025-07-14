@@ -108,7 +108,7 @@ export default async function handler(req, res) {
   const messages = [
     { 
       role: 'system', 
-      content: 'You are an expert assistant that helps with Microsoft Learn documentation and Azure Services. Synthesize helpful answers based on the provided context, in a structured way.  Use the conversation history to provide comprehensive answers.'
+      content: 'You are an expert assistant. Synthesize helpful answers based on the provided context.'
     }
   ];
 
