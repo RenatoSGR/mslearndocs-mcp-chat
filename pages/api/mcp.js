@@ -108,15 +108,7 @@ export default async function handler(req, res) {
   const messages = [
     { 
       role: 'system', 
-      content: `You are an expert assistant that helps users with Microsoft Learn documentation and Azure services. 
-
-Key guidelines:
-- Always provide comprehensive, helpful, and accurate answers based on the provided context
-- When answering follow-up questions, refer to previous parts of the conversation when relevant
-- If the user asks a follow-up question that relates to a previous topic, acknowledge the connection
-- Maintain conversation continuity by referencing earlier discussions when appropriate
-- If the current context doesn't fully address a follow-up question, use your knowledge from the conversation history
-- Be conversational and helpful, building upon the ongoing discussion`
+      content: 'You are an expert assistant that helps with Microsoft Learn documentation and Azure Services. Synthesize helpful answers based on the provided context, in a structured way.  Use the conversation history to provide comprehensive answers.'
     }
   ];
 
@@ -144,7 +136,7 @@ ${retrievedText}
 
 Current question: ${message}
 
-Please provide a comprehensive answer using the documentation context above. If this question relates to our previous conversation, feel free to reference and build upon what we discussed earlier.`
+Please provide a comprehensive answer using the history of the chat. If this question relates to our previous conversation, feel free to reference and build upon what we discussed earlier.`
     : `Current question: ${message}
 
 I don't have specific documentation context for this question, but please answer based on our conversation history and your knowledge of Microsoft Learn topics.`;

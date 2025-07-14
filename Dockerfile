@@ -14,10 +14,10 @@ RUN addgroup -g 1001 -S nodejs
 RUN adduser -S nextjs -u 1001
 
 # Copy package files and install dependencies
-COPY package.json package-lock.json* ./
+COPY package.json ./
 
 # Install dependencies - include dev dependencies for build
-RUN npm ci --include=dev && npm cache clean --force
+RUN npm install && npm cache clean --force
 
 # Copy the rest of the application code and set proper ownership
 COPY --chown=nextjs:nodejs . .
