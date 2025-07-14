@@ -40,7 +40,21 @@ const useMcp = () => {
 };
 
 export default function ChatPage() {
-    const [messages, setMessages] = useState([{ text: "Hello! I can search the official Microsoft Learn documentation. What would you like to know?", sender: 'ai' }]);
+    const [messages, setMessages] = useState([
+        { 
+            text: `Hello! I can search the official Microsoft documentation, powered by Microsoft Learn Docs MCP Server. Here are some examples how to interact with me:
+\`\`\`
+Give me the Azure CLI commands to create an Azure Container App with a managed identity. search Microsoft docs
+\`\`\`
+
+\`\`\`
+Is gpt-4.1-mini available in EU regions? search Microsoft docs
+\`\`\`
+
+What would you like to know?`, 
+            sender: 'ai' 
+        }
+    ]);
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
     const { sendMessage, isLoading, error } = useMcp();
@@ -55,6 +69,20 @@ export default function ChatPage() {
 
     const clearConversation = () => {
         setMessages([{ text: "Hello! I can search the official Microsoft Learn documentation. What would you like to know?", sender: 'ai' }]);
+    };
+
+    const copyCodeToClipboard = async (text) => {
+        try {
+            await navigator.clipboard.writeText(text);
+        } catch (err) {
+            // Fallback for older browsers
+            const textArea = document.createElement('textarea');
+            textArea.value = text;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textArea);
+        }
     };
 
     const handleSend = async (e) => {
@@ -88,6 +116,12 @@ export default function ChatPage() {
         </svg>
     );
 
+    const CopyCodeIcon = () => (
+        <svg xmlns="http://www.w3.org/2000/svg" className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+        </svg>
+    );
+
     // Logo placeholder components
     // const LeftLogo = () => (
     //     <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-xl flex items-center justify-center shadow-lg border border-blue-400/30">
@@ -111,7 +145,7 @@ export default function ChatPage() {
     // );
       const RightLogo = () => (
           <Image
-              src="/msdocs.png"
+              src="/aimsft.png"
               alt="Microsoft"
               width={54}
               height={48}
@@ -151,14 +185,35 @@ export default function ChatPage() {
         li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
         
         // Style code blocks and inline code
-        code: ({node, inline, ...props}) => 
-            inline ? (
-                <code className="bg-gray-800/60 text-blue-300 px-1.5 py-0.5 rounded text-sm font-mono border border-gray-600/30" {...props} />
+        code: ({node, inline, children, ...props}) => {
+            const codeText = String(children).replace(/\n$/, '');
+            
+            return inline ? (
+                <code className="bg-gray-800/60 text-blue-300 px-1.5 py-0.5 rounded text-sm font-mono border border-gray-600/30" {...props}>
+                    {children}
+                </code>
             ) : (
-                <pre className="bg-gray-800/60 text-blue-300 p-3 rounded-lg mb-3 overflow-x-auto border border-gray-600/30">
-                    <code className="font-mono text-sm" {...props} />
-                </pre>
-            ),
+                <div className="relative group mb-3">
+                    <code className="block bg-gray-800/60 text-blue-300 p-3 pr-10 rounded-lg overflow-x-auto border border-gray-600/30 font-mono text-sm" {...props}>
+                        {children}
+                    </code>
+                    <button
+                        onClick={() => copyCodeToClipboard(codeText)}
+                        className="absolute top-2 right-2 p-1.5 bg-gray-700/80 hover:bg-gray-600/80 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                        title="Copy code"
+                    >
+                        <CopyCodeIcon />
+                    </button>
+                </div>
+            );
+        },
+        
+        // Handle pre tags separately
+        pre: ({node, children, ...props}) => (
+            <pre className="bg-gray-800/60 text-blue-300 p-3 rounded-lg mb-3 overflow-x-auto border border-gray-600/30" {...props}>
+                {children}
+            </pre>
+        ),
         
         // Style blockquotes
         blockquote: ({node, ...props}) => (
@@ -207,7 +262,7 @@ export default function ChatPage() {
             <Head>
                 <title>MS Learn Docs AI Chat</title>
                 <meta name="description" content="Chat with an AI to search Microsoft Learn documentation." />
-                <link rel="icon" href="/msft.ico" />
+                <link rel="icon" href="/ai.ico" />
             </Head>
             
             <main className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 text-white flex flex-col">
