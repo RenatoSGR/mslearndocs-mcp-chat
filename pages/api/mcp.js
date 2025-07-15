@@ -34,8 +34,10 @@ export default async function handler(req, res) {
     }
   };
 
+
   try {
     // Step 1: Call MCP Server
+    console.log('[MCP] Request made to https://learn.microsoft.com/api/mcp');
     const mcpResponse = await fetch(MCP_SERVER_URL, {
       method: 'POST',
       headers: {
@@ -45,6 +47,12 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify(mcpPayload),
     });
+
+    if (mcpResponse.ok) {
+      console.log(`[MCP] Response received: HTTP ${mcpResponse.status} (success)`);
+    } else {
+      console.log(`[MCP] Response received: HTTP ${mcpResponse.status} (error)`);
+    }
 
     if (!mcpResponse.ok) {
       const errorText = await mcpResponse.text();
