@@ -137,7 +137,7 @@ What would you like to know?`,
               priority
           />
       );
-    
+
     // const RightLogo = () => (
     //     <div className="w-12 h-12 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl flex items-center justify-center shadow-lg border border-purple-400/30">
     //         <span className="text-white font-bold text-lg">AI</span>
@@ -158,61 +158,91 @@ What would you like to know?`,
 
     // Custom markdown components for styling
     const markdownComponents = {
-        // Style headings with less margin
-        h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-2 text-gray-800" {...props} />, 
-        h2: ({node, ...props}) => <h2 className="text-xl font-bold mb-2 text-gray-800" {...props} />, 
-        h3: ({node, ...props}) => <h3 className="text-lg font-bold mb-2 text-gray-800" {...props} />, 
-        h4: ({node, ...props}) => <h4 className="text-base font-bold mb-1 text-gray-800" {...props} />, 
-        h5: ({node, ...props}) => <h5 className="text-sm font-bold mb-1 text-gray-800" {...props} />, 
-        h6: ({node, ...props}) => <h6 className="text-xs font-bold mb-1 text-gray-800" {...props} />, 
-        // Style paragraphs with less margin
-        p: ({node, ...props}) => <p className="mb-2 leading-relaxed" {...props} />, 
-        // Style links
+        // Style headings with tighter spacing (inherit text color)
+        h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-1 mt-3 border-b border-gray-200 pb-1" {...props} />,
+        h2: ({node, ...props}) => <h2 className="text-xl font-bold mb-1 mt-2 border-b border-gray-100 pb-0.5" {...props} />,
+        h3: ({node, ...props}) => <h3 className="text-lg font-bold mb-1 mt-2" {...props} />,
+        h4: ({node, ...props}) => <h4 className="text-base font-bold mb-0.5 mt-1" {...props} />,
+        h5: ({node, ...props}) => <h5 className="text-sm font-bold mb-0.5 mt-1" {...props} />,
+        h6: ({node, ...props}) => <h6 className="text-xs font-bold mb-0.5 mt-1" {...props} />,
+        
+        // Style paragraphs with tighter spacing (inherit text color)
+        p: ({node, ...props}) => <p className="mb-1 leading-snug" {...props} />,
+        
+        // Style links with better visibility
         a: ({node, ...props}) => (
             <a
-                className="text-blue-600 hover:text-blue-800 underline font-medium bg-blue-50 px-1 py-0.5 rounded transition-colors"
+                className="text-blue-600 hover:text-blue-800 underline font-medium bg-blue-50 px-1 py-0.5 rounded transition-all duration-200 hover:bg-blue-100"
                 target="_blank"
                 rel="noopener noreferrer"
                 {...props}
             />
         ),
-        // Style lists with less margin
-        ul: ({node, ...props}) => <ul className="mb-2 pl-6 space-y-1 list-disc" {...props} />, 
-        ol: ({node, ...props}) => <ol className="mb-2 pl-6 space-y-1 list-decimal" {...props} />, 
-        li: ({node, ...props}) => <li className="leading-relaxed" {...props} />, 
-        // Style code blocks and inline code
-        code: ({node, inline, children, ...props}) => {
+        
+        // Style lists with tighter spacing (inherit text color)
+        ul: ({node, ...props}) => <ul className="mb-2 pl-6 space-y-0.5 list-disc" {...props} />,
+        ol: ({node, ...props}) => <ol className="mb-2 pl-6 space-y-0.5 list-decimal" {...props} />,
+        li: ({node, ...props}) => <li className="leading-snug" {...props} />,
+        
+        // Enhanced code blocks and inline code (with language labels but original colors and scroll)
+        code: ({node, inline, children, className, ...props}) => {
             const codeText = String(children).replace(/\n$/, '');
+            const match = /language-(\w+)/.exec(className || '');
+            const language = match ? match[1] : '';
+            
             return inline ? (
                 <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs sm:text-sm font-mono border border-gray-200" {...props}>
                     {children}
                 </code>
             ) : (
                 <div className="relative group mb-2">
-                    <code className="block bg-gray-100 text-gray-800 p-2 sm:p-3 pr-8 sm:pr-10 rounded-lg overflow-x-auto border border-gray-200 font-mono text-xs sm:text-sm" {...props}>
+                    {language && (
+                        <div className="bg-gray-200 px-3 py-1 text-xs font-medium text-gray-600 border border-gray-200 border-b-0 rounded-t-lg flex justify-between items-center">
+                            <span>{language}</span>
+                            <button
+                                onClick={() => copyCodeToClipboard(codeText)}
+                                className="p-1 bg-gray-300 hover:bg-gray-400 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 ml-2"
+                                title="Copy code"
+                            >
+                                <CopyCodeIcon />
+                            </button>
+                        </div>
+                    )}
+                    <code className={`block bg-gray-100 text-gray-800 p-2 sm:p-3 ${language ? 'pr-3 sm:pr-3 rounded-b-lg' : 'pr-8 sm:pr-10 rounded-lg'} overflow-x-auto border border-gray-200 font-mono text-xs sm:text-sm`} {...props}>
                         {children}
                     </code>
-                    <button
-                        onClick={() => copyCodeToClipboard(codeText)}
-                        className="absolute top-1 right-1 sm:top-2 sm:right-2 p-1 sm:p-1.5 bg-gray-200 hover:bg-gray-300 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200"
-                        title="Copy code"
-                    >
-                        <CopyCodeIcon />
-                    </button>
+                    {!language && (
+                        <button
+                            onClick={() => copyCodeToClipboard(codeText)}
+                            className="absolute top-1 right-1 sm:top-2 sm:right-2 p-1 sm:p-1.5 bg-gray-200 hover:bg-gray-300 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200"
+                            title="Copy code"
+                        >
+                            <CopyCodeIcon />
+                        </button>
+                    )}
                 </div>
             );
         },
-        // Handle pre tags separately
-        pre: ({node, children, ...props}) => (
-            <pre className="bg-gray-100 text-gray-800 p-3 rounded-lg mb-2 overflow-x-auto border border-gray-200" {...props}>
-                {children}
-            </pre>
-        ),
-        // Style blockquotes
+        
+        // Handle pre tags to avoid conflicts (with proper scrolling)
+        pre: ({node, children, ...props}) => {
+            // If already styled by code component, just return children
+            if (props.className?.includes('block bg-gray-100')) {
+                return <>{children}</>;
+            }
+            return (
+                <pre className="bg-gray-100 text-gray-800 p-2 sm:p-3 rounded-lg mb-2 overflow-x-auto border border-gray-200 font-mono text-xs sm:text-sm" {...props}>
+                    {children}
+                </pre>
+            );
+        },
+        
+        // Enhanced blockquotes (reverted blue colors, inherit text color)
         blockquote: ({node, ...props}) => (
-            <blockquote className="border-l-4 border-blue-400 pl-4 py-2 mb-2 bg-blue-50 italic text-gray-700" {...props} />
+            <blockquote className="border-l-4 border-blue-400 pl-4 py-2 mb-2 bg-blue-50 italic" {...props} />
         ),
-        // Style tables
+        
+        // Fixed tables with proper structure (simplified working version)
         table: ({node, ...props}) => (
             <div className="overflow-x-auto mb-2">
                 <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden" {...props} />
@@ -224,11 +254,22 @@ What would you like to know?`,
         td: ({node, ...props}) => (
             <td className="bg-white border border-gray-200 px-3 py-2 text-gray-700" {...props} />
         ),
-        // Style horizontal rules
-        hr: ({node, ...props}) => <hr className="border-gray-300 my-2" {...props} />, 
-        // Style strong and emphasis
-        strong: ({node, ...props}) => <strong className="font-bold text-gray-800" {...props} />, 
-        em: ({node, ...props}) => <em className="italic text-gray-700" {...props} />, 
+        
+        // Style horizontal rules (reverted)
+        hr: ({node, ...props}) => <hr className="border-gray-300 my-2" {...props} />,
+        
+        // Enhanced text formatting (inherit text color)
+        strong: ({node, ...props}) => <strong className="font-bold" {...props} />,
+        em: ({node, ...props}) => <em className="italic font-medium" {...props} />,
+        
+        // Add support for other markdown elements (inherit text color)
+        del: ({node, ...props}) => <del className="line-through opacity-75" {...props} />,
+        mark: ({node, ...props}) => <mark className="bg-yellow-200 px-1 rounded" {...props} />,
+        
+        // Enhanced image support
+        img: ({node, ...props}) => (
+            <img className="max-w-full h-auto rounded-lg shadow-md my-2" {...props} />
+        ),
     };
 
     // Function to render message content with markdown support
@@ -255,14 +296,14 @@ What would you like to know?`,
                 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
                 <link rel="icon" href="/ai.ico" />
             </Head>
-            
+
             <main className="min-h-screen bg-white text-gray-900 flex flex-col">
                 {/* Clean background */}
                 <div className="absolute inset-0 bg-gray-50/50"></div>
-                
+
                 <div className="relative z-10 flex-grow flex flex-col items-center justify-center p-2 sm:p-4" style={{ height: '100vh' }}>
                     <div className="w-full max-w-4xl h-full flex flex-col bg-white rounded-none sm:rounded-lg shadow-sm border-0 sm:border border-gray-200 overflow-hidden">
-                        
+
                         {/* Clean Header */}
                         <header className="p-3 sm:p-6 border-b border-gray-200 bg-white">
                             <div className="flex items-center justify-between">
@@ -307,7 +348,7 @@ What would you like to know?`,
                                         </div>
                                     )}
                                     <div
-                                        className={`max-w-[98vw] sm:max-w-3xl p-3 sm:p-4 rounded-lg whitespace-pre-wrap shadow-sm border text-sm sm:text-base ${
+                                        className={`max-w-[85%] sm:max-w-md p-3 sm:p-4 rounded-lg whitespace-pre-wrap shadow-sm border text-sm sm:text-base ${
                                             msg.sender === 'user'
                                                 ? 'bg-blue-600 text-white border-blue-700 rounded-br-sm'
                                                 : 'bg-white text-gray-900 border-gray-200 rounded-bl-sm'
@@ -322,7 +363,7 @@ What would you like to know?`,
                                     )}
                                 </div>
                             ))}
-                            
+
                             {isLoading && (
                                 <div className="flex items-start gap-2 sm:gap-4">
                                     <div className="p-2 sm:p-3 bg-blue-600 rounded-full animate-pulse shadow-sm flex-shrink-0">
