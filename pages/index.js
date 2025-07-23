@@ -158,17 +158,15 @@ What would you like to know?`,
 
     // Custom markdown components for styling
     const markdownComponents = {
-        // Style headings
-        h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-3 text-gray-800" {...props} />,
-        h2: ({node, ...props}) => <h2 className="text-xl font-bold mb-2 text-gray-800" {...props} />,
-        h3: ({node, ...props}) => <h3 className="text-lg font-bold mb-2 text-gray-800" {...props} />,
-        h4: ({node, ...props}) => <h4 className="text-base font-bold mb-1 text-gray-800" {...props} />,
-        h5: ({node, ...props}) => <h5 className="text-sm font-bold mb-1 text-gray-800" {...props} />,
-        h6: ({node, ...props}) => <h6 className="text-xs font-bold mb-1 text-gray-800" {...props} />,
-        
-        // Style paragraphs
-        p: ({node, ...props}) => <p className="mb-3 leading-relaxed" {...props} />,
-        
+        // Style headings with less margin
+        h1: ({node, ...props}) => <h1 className="text-2xl font-bold mb-2 text-gray-800" {...props} />, 
+        h2: ({node, ...props}) => <h2 className="text-xl font-bold mb-2 text-gray-800" {...props} />, 
+        h3: ({node, ...props}) => <h3 className="text-lg font-bold mb-2 text-gray-800" {...props} />, 
+        h4: ({node, ...props}) => <h4 className="text-base font-bold mb-1 text-gray-800" {...props} />, 
+        h5: ({node, ...props}) => <h5 className="text-sm font-bold mb-1 text-gray-800" {...props} />, 
+        h6: ({node, ...props}) => <h6 className="text-xs font-bold mb-1 text-gray-800" {...props} />, 
+        // Style paragraphs with less margin
+        p: ({node, ...props}) => <p className="mb-2 leading-relaxed" {...props} />, 
         // Style links
         a: ({node, ...props}) => (
             <a
@@ -178,22 +176,19 @@ What would you like to know?`,
                 {...props}
             />
         ),
-        
-        // Style lists
-        ul: ({node, ...props}) => <ul className="mb-3 pl-6 space-y-1 list-disc" {...props} />,
-        ol: ({node, ...props}) => <ol className="mb-3 pl-6 space-y-1 list-decimal" {...props} />,
-        li: ({node, ...props}) => <li className="leading-relaxed" {...props} />,
-        
+        // Style lists with less margin
+        ul: ({node, ...props}) => <ul className="mb-2 pl-6 space-y-1 list-disc" {...props} />, 
+        ol: ({node, ...props}) => <ol className="mb-2 pl-6 space-y-1 list-decimal" {...props} />, 
+        li: ({node, ...props}) => <li className="leading-relaxed" {...props} />, 
         // Style code blocks and inline code
         code: ({node, inline, children, ...props}) => {
             const codeText = String(children).replace(/\n$/, '');
-            
             return inline ? (
                 <code className="bg-gray-100 text-gray-800 px-1.5 py-0.5 rounded text-xs sm:text-sm font-mono border border-gray-200" {...props}>
                     {children}
                 </code>
             ) : (
-                <div className="relative group mb-3">
+                <div className="relative group mb-2">
                     <code className="block bg-gray-100 text-gray-800 p-2 sm:p-3 pr-8 sm:pr-10 rounded-lg overflow-x-auto border border-gray-200 font-mono text-xs sm:text-sm" {...props}>
                         {children}
                     </code>
@@ -207,22 +202,19 @@ What would you like to know?`,
                 </div>
             );
         },
-        
         // Handle pre tags separately
         pre: ({node, children, ...props}) => (
-            <pre className="bg-gray-100 text-gray-800 p-3 rounded-lg mb-3 overflow-x-auto border border-gray-200" {...props}>
+            <pre className="bg-gray-100 text-gray-800 p-3 rounded-lg mb-2 overflow-x-auto border border-gray-200" {...props}>
                 {children}
             </pre>
         ),
-        
         // Style blockquotes
         blockquote: ({node, ...props}) => (
-            <blockquote className="border-l-4 border-blue-400 pl-4 py-2 mb-3 bg-blue-50 italic text-gray-700" {...props} />
+            <blockquote className="border-l-4 border-blue-400 pl-4 py-2 mb-2 bg-blue-50 italic text-gray-700" {...props} />
         ),
-        
         // Style tables
         table: ({node, ...props}) => (
-            <div className="overflow-x-auto mb-3">
+            <div className="overflow-x-auto mb-2">
                 <table className="min-w-full border border-gray-200 rounded-lg overflow-hidden" {...props} />
             </div>
         ),
@@ -232,13 +224,11 @@ What would you like to know?`,
         td: ({node, ...props}) => (
             <td className="bg-white border border-gray-200 px-3 py-2 text-gray-700" {...props} />
         ),
-        
         // Style horizontal rules
-        hr: ({node, ...props}) => <hr className="border-gray-300 my-4" {...props} />,
-        
+        hr: ({node, ...props}) => <hr className="border-gray-300 my-2" {...props} />, 
         // Style strong and emphasis
-        strong: ({node, ...props}) => <strong className="font-bold text-gray-800" {...props} />,
-        em: ({node, ...props}) => <em className="italic text-gray-700" {...props} />,
+        strong: ({node, ...props}) => <strong className="font-bold text-gray-800" {...props} />, 
+        em: ({node, ...props}) => <em className="italic text-gray-700" {...props} />, 
     };
 
     // Function to render message content with markdown support
@@ -317,7 +307,7 @@ What would you like to know?`,
                                         </div>
                                     )}
                                     <div
-                                        className={`max-w-[85%] sm:max-w-md p-3 sm:p-4 rounded-lg whitespace-pre-wrap shadow-sm border text-sm sm:text-base ${
+                                        className={`max-w-[98vw] sm:max-w-3xl p-3 sm:p-4 rounded-lg whitespace-pre-wrap shadow-sm border text-sm sm:text-base ${
                                             msg.sender === 'user'
                                                 ? 'bg-blue-600 text-white border-blue-700 rounded-br-sm'
                                                 : 'bg-white text-gray-900 border-gray-200 rounded-bl-sm'
