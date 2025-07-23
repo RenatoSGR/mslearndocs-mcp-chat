@@ -1,3 +1,4 @@
 {
-    "githubPullRequests.codingAgent.uiIntegration": true
+    "githubPullRequests.codingAgent.uiIntegration": true,
+    "postman.settings.dotenv-detection-notification-visibility": false
 }

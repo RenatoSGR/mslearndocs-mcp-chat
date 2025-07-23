@@ -123,7 +123,7 @@ export default async function handler(req, res) {
         { role: 'system', content: 'You are an expert assistant. Synthesize helpful answers based on the provided context.' },
         { role: 'user', content: `Context:\n${retrievedText}\n\nQuestion:\n${message}` }
       ],
-      max_tokens: 500,
+      max_tokens: 800,
       temperature: 0.7
     }),
   });
