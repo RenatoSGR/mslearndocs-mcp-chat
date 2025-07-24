@@ -120,10 +120,15 @@ const LoginPanel = ({ onLogin, error }) => {
 const useMcp = () => {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState(null);
+    const [abortController, setAbortController] = useState(null);
 
     const sendMessage = async (message, conversationHistory = []) => {
+        // Create new AbortController for this request
+        const controller = new AbortController();
+        setAbortController(controller);
         setIsLoading(true);
         setError(null);
+        
         try {
             const response = await fetch('/api/mcp', {
                 method: 'POST',
@@ -132,6 +137,7 @@ const useMcp = () => {
                     message,
                     conversationHistory 
                 }),
+                signal: controller.signal
             });
 
             if (!response.ok) {
@@ -141,14 +147,128 @@ const useMcp = () => {
             const data = await response.json();
             return data.reply;
         } catch (err) {
+            if (err.name === 'AbortError') {
+                throw new Error('Request cancelled');
+            }
             setError(err.message || 'Something went wrong');
             throw err;
         } finally {
             setIsLoading(false);
+            setAbortController(null);
         }
     };
 
-    return { sendMessage, isLoading, error };
+    const cancelRequest = () => {
+        if (abortController) {
+            abortController.abort();
+            setAbortController(null);
+            setIsLoading(false);
+        }
+    };
+
+    return { sendMessage, cancelRequest, isLoading, error };
+};
+
+// Custom Image Component for markdown with error handling
+const MarkdownImage = ({ alt, src, title, ...props }) => {
+    const [imageError, setImageError] = useState(false);
+    const [imageLoading, setImageLoading] = useState(true);
+
+    const handleImageError = () => {
+        console.log('Image failed to load:', src);
+        setImageError(true);
+        setImageLoading(false);
+    };
+
+    const handleImageLoad = () => {
+        console.log('Image loaded successfully:', src);
+        setImageLoading(false);
+    };
+
+    // Utility function to process image URLs
+    const processImageUrl = (url) => {
+        if (!url) return url;
+        
+        console.log('Processing image URL:', url);
+        
+        // If running in Azure Container Apps, ensure HTTPS for external images
+        if (url.startsWith('http://') && !url.includes('localhost')) {
+            const httpsUrl = url.replace('http://', 'https://');
+            console.log('Converted HTTP to HTTPS:', httpsUrl);
+            return httpsUrl;
+        }
+        
+        // Handle relative URLs by making them absolute
+        if (url.startsWith('//')) {
+            const absoluteUrl = `https:${url}`;
+            console.log('Made relative URL absolute:', absoluteUrl);
+            return absoluteUrl;
+        }
+        
+        // For Microsoft Learn docs images, ensure they use the correct domain
+        if (url.includes('learn.microsoft.com') || url.includes('docs.microsoft.com')) {
+            const httpsUrl = url.replace(/^http:/, 'https:');
+            console.log('Fixed Microsoft docs URL:', httpsUrl);
+            return httpsUrl;
+        }
+        
+        console.log('URL unchanged:', url);
+        return url;
+    };
+
+    const processedSrc = processImageUrl(src);
+
+    // If image failed to load, show fallback
+    if (imageError) {
+        return (
+            <div className="max-w-full bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 my-2 text-center">
+                <div className="text-gray-500 mb-2">
+                    <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                    <p className="text-sm font-medium">Image could not be loaded</p>
+                    {alt && <p className="text-xs mt-1 text-gray-600">{alt}</p>}
+                    <p className="text-xs mt-1 text-gray-400 break-all">URL: {src}</p>
+                    {processedSrc && (
+                        <a 
+                            href={processedSrc} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-blue-600 hover:text-blue-800 underline text-xs mt-2 inline-block"
+                        >
+                            Try viewing image directly
+                        </a>
+                    )}
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="my-2 relative">
+            {imageLoading && (
+                <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center min-h-32 z-10">
+                    <div className="text-gray-500">
+                        <svg className="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        <p className="text-sm">Loading image...</p>
+                    </div>
+                </div>
+            )}
+            <img 
+                className="max-w-full h-auto rounded-lg shadow-md"
+                alt={alt || "Image"}
+                src={processedSrc}
+                title={title}
+                onError={handleImageError}
+                onLoad={handleImageLoad}
+                loading="lazy"
+                {...props}
+            />
+        </div>
+    );
 };
 
 export default function ChatPage() {
@@ -165,7 +285,7 @@ Give me the Azure CLI commands to create an Azure Container App with a managed i
 \`\`\`
 
 \`\`\`
-Provide me a visual or schematic overview of an Agentic AI Architecture.
+Baseline architecture image for an Azure Kubernetes Service (AKS) cluster.
 \`\`\`
 
 What would you like to know?`, 
@@ -174,7 +294,7 @@ What would you like to know?`,
     ]);
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
-    const { sendMessage, isLoading, error } = useMcp();
+    const { sendMessage, cancelRequest, isLoading, error } = useMcp();
 
     const handleLogin = (success) => {
         if (success) {
@@ -247,8 +367,15 @@ What would you like to know?`,
             const aiMessage = { text: aiResponseText, sender: 'ai' };
             setMessages(prev => [...prev, aiMessage]);
         } catch (error) {
+            if (error.message === 'Request cancelled') {
+                console.log('Request was cancelled by user');
+            }
             // Error is already handled by the hook
         }
+    };
+
+    const handleCancel = () => {
+        cancelRequest();
     };
 
     const UserIcon = () => (
@@ -413,10 +540,8 @@ What would you like to know?`,
         del: ({node, ...props}) => <del className="line-through opacity-75" {...props} />,
         mark: ({node, ...props}) => <mark className="bg-yellow-200 px-1 rounded" {...props} />,
         
-        // Enhanced image support
-        img: ({node, ...props}) => (
-            <img className="max-w-full h-auto rounded-lg shadow-md my-2" {...props} />
-        ),
+        // Enhanced image support with error handling and fallbacks
+        img: (props) => <MarkdownImage {...props} />,
     };
 
     // Function to render message content with markdown support
@@ -454,6 +579,11 @@ What would you like to know?`,
                         {/* Clean Header */}
                         <header className="p-3 sm:p-6 border-b border-gray-200 bg-white">
                             <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="hidden sm:block">
+                                        <RightLogo />
+                                    </div>
+                                </div>
                                 <div className="flex-1 text-center">
                                     <h1 className="text-lg sm:text-3xl font-semibold text-gray-800">
                                         MS Learn Docs AI Assistant 
@@ -480,9 +610,6 @@ What would you like to know?`,
                                         </svg>
                                         Logout
                                     </button>
-                                    <div className="hidden sm:block">
-                                        <RightLogo />
-                                    </div>
                                 </div>
                             </div>
                         </header>
@@ -567,30 +694,19 @@ What would you like to know?`,
                                     disabled={isLoading}
                                 />
                                 <button
-                                    type="submit"
-                                    disabled={isLoading}
-                                    className="p-3 sm:p-4 bg-blue-600 rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all duration-200 shadow-sm flex-shrink-0"
+                                    type={isLoading ? "button" : "submit"}
+                                    onClick={isLoading ? handleCancel : undefined}
+                                    disabled={false}
+                                    className={`p-3 sm:p-4 rounded-lg focus:outline-none focus:ring-2 transition-all duration-200 shadow-sm flex-shrink-0 ${
+                                        isLoading 
+                                            ? 'bg-red-600 hover:bg-red-700 focus:ring-red-500' 
+                                            : 'bg-blue-600 hover:bg-blue-700 focus:ring-blue-500 disabled:bg-gray-400 disabled:cursor-not-allowed'
+                                    }`}
+                                    title={isLoading ? "Cancel request" : "Send message"}
                                 >
                                     {isLoading ? (
-                                        <svg
-                                            className="animate-spin h-6 w-6 text-white"
-                                            xmlns="http://www.w3.org/2000/svg"
-                                            fill="none"
-                                            viewBox="0 0 24 24"
-                                        >
-                                            <circle
-                                                className="opacity-25"
-                                                cx="12"
-                                                cy="12"
-                                                r="10"
-                                                stroke="currentColor"
-                                                strokeWidth="4"
-                                            ></circle>
-                                            <path
-                                                className="opacity-75"
-                                                fill="currentColor"
-                                                d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                                            ></path>
+                                        <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                                         </svg>
                                     ) : (
                                         <svg

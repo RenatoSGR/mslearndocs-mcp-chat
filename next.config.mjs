@@ -2,8 +2,21 @@
 const nextConfig = {
   reactStrictMode: true,
   output: 'standalone',
-  experimental: {
-    outputFileTracingRoot: '.',
+  outputFileTracingRoot: '.',
+  images: {
+    // Allow images from any domain when running in containers
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: '**',
+      },
+    ],
+    // Disable image optimization for better container compatibility
+    unoptimized: true,
   },
 };
 
