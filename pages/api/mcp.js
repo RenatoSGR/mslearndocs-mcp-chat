@@ -12,15 +12,29 @@ export default async function handler(req, res) {
     return res.status(405).end(`Method ${req.method} Not Allowed`);
   }
 
-  const { message } = req.body;
+  const { message, conversationHistory = [] } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
   }
 
+  console.log(`[MCP] Processing request with ${conversationHistory.length} previous messages`);
+
   const MCP_SERVER_URL = 'https://learn.microsoft.com/api/mcp';
 
-  const enhancedQuestion = `Please provide a comprehensive and detailed explanation about: ${message}. Include practical examples, best practices, and step-by-step guidance where applicable.`;
+  // Build context from conversation history
+  let contextString = '';
+  if (conversationHistory.length > 0) {
+    console.log('[MCP] Including conversation history in context');
+    contextString = '\n\nPrevious conversation context:\n';
+    conversationHistory.slice(-6).forEach((msg, index) => { // Keep last 6 messages for context
+      const role = msg.sender === 'user' ? 'User' : 'Assistant';
+      contextString += `${role}: ${msg.text}\n`;
+    });
+    contextString += '\n';
+  }
+
+  const enhancedQuestion = `Please provide a comprehensive and detailed explanation about: ${message}. Include practical examples, best practices, and step-by-step guidance where applicable.${contextString}Current question: ${message}`;
 
   const mcpPayload = {
     "jsonrpc": "2.0",
@@ -37,7 +51,9 @@ export default async function handler(req, res) {
 
   try {
     // Step 1: Call MCP Server
-    console.log('[MCP] Request made to https://learn.microsoft.com/api/mcp');
+    console.log('[MCP] Request initiated');
+    console.log(`[MCP] URL: ${MCP_SERVER_URL}`);
+    
     const mcpResponse = await fetch(MCP_SERVER_URL, {
       method: 'POST',
       headers: {
@@ -48,15 +64,17 @@ export default async function handler(req, res) {
       body: JSON.stringify(mcpPayload),
     });
 
+    console.log(`[MCP] Response received: HTTP ${mcpResponse.status}`);
+
     if (mcpResponse.ok) {
-      console.log(`[MCP] Response received: HTTP ${mcpResponse.status} (success)`);
+      console.log(`[MCP] ✅ Success - HTTP ${mcpResponse.status}`);
     } else {
-      console.log(`[MCP] Response received: HTTP ${mcpResponse.status} (error)`);
+      console.log(`[MCP] ❌ Error - HTTP ${mcpResponse.status}`);
     }
 
     if (!mcpResponse.ok) {
       const errorText = await mcpResponse.text();
-      console.error('MCP Server Error:', errorText);
+      console.error('[MCP] Error response body:', errorText);
       throw new Error(`MCP Server responded with status: ${mcpResponse.status}`);
     }
 
@@ -65,7 +83,7 @@ export default async function handler(req, res) {
     const dataLine = lines.find(line => line.trim().startsWith('data:') && line.includes('"jsonrpc"'));
 
     if (!dataLine) {
-      console.error("Could not find JSON-RPC response in SSE stream:", responseText);
+      console.error("[MCP] Could not find JSON-RPC response in SSE stream");
       throw new Error('Invalid response format from server.');
     }
 
@@ -73,7 +91,7 @@ export default async function handler(req, res) {
     const responseData = JSON.parse(jsonString);
 
     if (responseData.error) {
-      console.error('MCP JSON-RPC Error:', responseData.error);
+      console.error('[MCP] JSON-RPC Error:', responseData.error);
       throw new Error(`MCP error: ${responseData.error.message}`);
     }
 
@@ -82,6 +100,8 @@ export default async function handler(req, res) {
       .filter(part => part.type === 'text' && part.text)
       .map(part => part.text)
       .join('\n\n');
+
+    console.log('[MCP] ✅ MCP server request completed successfully');
 
     if (!retrievedText.trim()) {
       return res.status(200).json({ reply: "I found some documentation, but it didn't contain any readable text to analyze." });
@@ -112,6 +132,28 @@ export default async function handler(req, res) {
     // }
   const azureUrl = `${AZURE_OPENAI_ENDPOINT}/openai/deployments/${AZURE_OPENAI_DEPLOYMENT_NAME}/chat/completions?api-version=2025-01-01-preview`;
 
+  // Build messages array with conversation history
+  const messages = [
+    { 
+      role: 'system', 
+      content: 'You are an expert assistant. Synthesize helpful answers based on the provided context from Microsoft documentation. Maintain conversation continuity and refer to previous context when relevant.' 
+    }
+  ];
+
+  // Add conversation history (limit to last 10 messages to avoid token limits)
+  if (conversationHistory.length > 0) {
+    conversationHistory.slice(-10).forEach(msg => {
+      const role = msg.sender === 'user' ? 'user' : 'assistant';
+      messages.push({ role, content: msg.text });
+    });
+  }
+
+  // Add current context and question
+  messages.push({ 
+    role: 'user', 
+    content: `Based on the following Microsoft documentation context, please answer the question. Consider the previous conversation for continuity.\n\nContext from Microsoft Docs:\n${retrievedText}\n\nCurrent Question: ${message}` 
+  });
+
   const aiResponse = await fetch(azureUrl, {
     method: 'POST',
     headers: {
@@ -119,10 +161,7 @@ export default async function handler(req, res) {
       'api-key': AZURE_OPENAI_KEY
     },
     body: JSON.stringify({
-      messages: [
-        { role: 'system', content: 'You are an expert assistant. Synthesize helpful answers based on the provided context.' },
-        { role: 'user', content: `Context:\n${retrievedText}\n\nQuestion:\n${message}` }
-      ],
+      messages,
       max_tokens: 800,
       temperature: 0.7
     }),
@@ -141,7 +180,8 @@ export default async function handler(req, res) {
     res.status(200).json({ reply: synthesizedAnswer });
 
   } catch (error) {
-    console.error('Error contacting MCP server or AI model:', error);
+    console.error('[MCP] ❌ Error during MCP server request or AI processing:', error);
+    console.error('[MCP] Error stack:', error.stack);
     res.status(500).json({ error: 'Failed to process the request.' });
   }
 }

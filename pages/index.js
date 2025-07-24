@@ -307,9 +307,6 @@ What would you like to know?`,
                         {/* Clean Header */}
                         <header className="p-3 sm:p-6 border-b border-gray-200 bg-white">
                             <div className="flex items-center justify-between">
-                                <div className="hidden sm:block">
-                                    <LeftLogo />
-                                </div>
                                 <div className="flex-1 text-center">
                                     <h1 className="text-lg sm:text-3xl font-semibold text-gray-800">
                                         MS Learn Docs AI Assistant 
