@@ -285,7 +285,7 @@ Give me the Azure CLI commands to create an Azure Container App with a managed i
 \`\`\`
 
 \`\`\`
-Baseline architecture image for an Azure Kubernetes Service (AKS) cluster.
+How to setup on AI Foundry a PTU for a model? Provide the steps and sample images.
 \`\`\`
 
 What would you like to know?`, 
