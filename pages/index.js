@@ -122,12 +122,12 @@ const useMcp = () => {
     const [error, setError] = useState(null);
     const [abortController, setAbortController] = useState(null);
 
-    const sendMessage = async (message, conversationHistory = []) => {
+    const sendMessage = async (message, conversationHistory = [], onChunk) => {
         // Create new AbortController for this request
         const controller = new AbortController();
         setAbortController(controller);
         setIsLoading(true);
-        setError(null);
+        setError(null); // Clear any previous errors
         
         try {
             const response = await fetch('/api/mcp', {
@@ -141,11 +141,54 @@ const useMcp = () => {
             });
 
             if (!response.ok) {
-                throw new Error('Network response was not ok');
+                const errorText = await response.text().catch(() => 'Unknown error');
+                throw new Error(`Network error (${response.status}): ${errorText}`);
             }
 
-            const data = await response.json();
-            return data.reply;
+            // Handle streaming response
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let accumulatedContent = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                const lines = chunk.split('\n');
+                
+                for (const line of lines) {
+                    if (line.startsWith('data: ') && line.length > 6) {
+                        const data = line.slice(6).trim();
+                        
+                        if (data === '[DONE]') {
+                            return accumulatedContent;
+                        }
+                        
+                        try {
+                            const parsed = JSON.parse(data);
+                            
+                            if (parsed.error) {
+                                throw new Error(parsed.error);
+                            }
+                            
+                            if (parsed.content) {
+                                accumulatedContent += parsed.content;
+                                // Call the onChunk callback with the accumulated content
+                                if (onChunk) {
+                                    onChunk(accumulatedContent);
+                                }
+                            }
+                        } catch (parseError) {
+                            // Skip invalid JSON chunks
+                            continue;
+                        }
+                    }
+                }
+            }
+            
+            return accumulatedContent || "I'm sorry, I couldn't generate a response.";
         } catch (err) {
             if (err.name === 'AbortError') {
                 throw new Error('Request cancelled');
@@ -166,7 +209,11 @@ const useMcp = () => {
         }
     };
 
-    return { sendMessage, cancelRequest, isLoading, error };
+    const clearError = () => {
+        setError(null);
+    };
+
+    return { sendMessage, cancelRequest, clearError, isLoading, error };
 };
 
 // Custom Image Component for markdown with error handling
@@ -279,6 +326,7 @@ export default function ChatPage() {
     // Chat application state (initialize all hooks first)
     const [messages, setMessages] = useState([
         { 
+            id: 'welcome',
             text: `Hello! I can search the official Microsoft documentation, powered by Microsoft Learn Docs MCP Server. Here are some examples how to interact with me:
 \`\`\`
 Give me the Azure CLI commands to create an Azure Container App with a managed identity. search Microsoft docs
@@ -294,7 +342,7 @@ What would you like to know?`,
     ]);
     const [input, setInput] = useState('');
     const messagesEndRef = useRef(null);
-    const { sendMessage, cancelRequest, isLoading, error } = useMcp();
+    const { sendMessage, cancelRequest, clearError, isLoading, error } = useMcp();
 
     const handleLogin = (success) => {
         if (success) {
@@ -324,13 +372,13 @@ What would you like to know?`,
     }, [messages]);
 
     const clearConversation = () => {
-        setMessages([{ text: "Hello! I can search the official Microsoft Learn documentation. What would you like to know?", sender: 'ai' }]);
+        setMessages([{ id: 'welcome', text: "Hello! I can search the official Microsoft Learn documentation. What would you like to know?", sender: 'ai' }]);
     };
 
     const handleLogout = () => {
         sessionStorage.removeItem('authenticated');
         setIsAuthenticated(false);
-        setMessages([{ text: "Hello! I can search the official Microsoft Learn documentation. What would you like to know?", sender: 'ai' }]);
+        setMessages([{ id: 'welcome', text: "Hello! I can search the official Microsoft Learn documentation. What would you like to know?", sender: 'ai' }]);
     };
 
     // If not authenticated, show login panel
@@ -356,19 +404,63 @@ What would you like to know?`,
         e.preventDefault();
         if (!input.trim()) return;
 
+        // Clear any previous errors when starting a new request
+        clearError();
+
         const userMessage = { text: input, sender: 'user' };
         const updatedMessages = [...messages, userMessage];
         setMessages(updatedMessages);
         setInput('');
 
+        // Add a placeholder AI message that will be updated with streaming content
+        const aiMessageId = Date.now();
+        const placeholderAiMessage = { 
+            text: '', 
+            sender: 'ai', 
+            id: aiMessageId,
+            isSearching: true 
+        };
+        setMessages(prev => [...prev, placeholderAiMessage]);
+
         try {
-            // Pass the updated conversation history (including the new user message)
-            const aiResponseText = await sendMessage(input, updatedMessages);
-            const aiMessage = { text: aiResponseText, sender: 'ai' };
-            setMessages(prev => [...prev, aiMessage]);
+            // Pass the updated conversation history and a callback to update the streaming message
+            await sendMessage(input, updatedMessages, (accumulatedContent) => {
+                setMessages(prev => 
+                    prev.map(msg => 
+                        msg.id === aiMessageId 
+                            ? { ...msg, text: accumulatedContent, isSearching: false }
+                            : msg
+                    )
+                );
+            });
+
+            // Mark streaming as complete
+            setMessages(prev => 
+                prev.map(msg => 
+                    msg.id === aiMessageId 
+                        ? { ...msg, isSearching: false }
+                        : msg
+                )
+            );
         } catch (error) {
             if (error.message === 'Request cancelled') {
                 console.log('Request was cancelled by user');
+                // Remove the placeholder message on cancellation
+                setMessages(prev => prev.filter(msg => msg.id !== aiMessageId));
+            } else {
+                // Update the placeholder message with error and show a retry button
+                setMessages(prev => 
+                    prev.map(msg => 
+                        msg.id === aiMessageId 
+                            ? { 
+                                ...msg, 
+                                text: "Sorry, there was an error processing your request. Please try again.", 
+                                isSearching: false,
+                                hasError: true
+                            }
+                            : msg
+                    )
+                );
             }
             // Error is already handled by the hook
         }
@@ -618,7 +710,7 @@ What would you like to know?`,
                         <div className="flex-1 p-3 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 bg-gray-50/30">
                             {messages.map((msg, index) => (
                                 <div
-                                    key={index}
+                                    key={msg.id || index}
                                     className={`flex items-start gap-2 sm:gap-4 ${
                                         msg.sender === 'user' ? 'justify-end' : ''
                                     }`}
@@ -635,7 +727,26 @@ What would you like to know?`,
                                                 : 'bg-white text-gray-900 border-gray-200 rounded-bl-sm'
                                         }`}
                                     >
-                                        <div className={msg.sender === 'user' ? 'text-white' : 'text-gray-900'}>{renderMessageContent(msg.text)}</div>
+                                        {msg.isSearching ? (
+                                            <div>
+                                                <div className="flex items-center space-x-2 mb-2">
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
+                                                    <div className="w-2 h-2 bg-blue-500 rounded-full animate-bounce"></div>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <svg className="w-4 h-4 text-blue-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                    </svg>
+                                                    <p className="text-sm text-blue-600 font-medium">Searching Microsoft Docs...</p>
+                                                </div>
+                                                <p className="text-xs text-gray-500 mt-1">Finding relevant documentation and generating response</p>
+                                            </div>
+                                        ) : (
+                                            <div className={msg.sender === 'user' ? 'text-white' : 'text-gray-900'}>
+                                                {renderMessageContent(msg.text)}
+                                            </div>
+                                        )}
                                     </div>
                                     {msg.sender === 'user' && (
                                         <div className="p-2 sm:p-3 bg-gray-600 rounded-full shadow-sm flex-shrink-0">
@@ -645,32 +756,24 @@ What would you like to know?`,
                                 </div>
                             ))}
 
-                            {isLoading && (
-                                <div className="flex items-start gap-2 sm:gap-4">
-                                    <div className="p-2 sm:p-3 bg-blue-600 rounded-full animate-pulse shadow-sm flex-shrink-0">
-                                        <AiIcon />
-                                    </div>
-                                    <div className="max-w-[85%] sm:max-w-md p-3 sm:p-4 bg-white text-gray-900 rounded-lg rounded-bl-sm shadow-sm border border-gray-200">
-                                        <div className="flex items-center space-x-2">
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.3s]"></div>
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:-0.15s]"></div>
-                                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                             <div ref={messagesEndRef} />
                         </div>
 
                         {/* Error Display */}
                         {error && (
                             <div className="p-4 text-red-600 text-center border-t border-gray-200 bg-red-50">
-                                <div className="flex items-center justify-center gap-2">
+                                <div className="flex items-center justify-center gap-2 mb-3">
                                     <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                                         <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
                                     </svg>
-                                    {error}
+                                    <span className="text-sm">{error}</span>
                                 </div>
+                                <button
+                                    onClick={clearError}
+                                    className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
+                                >
+                                    Dismiss Error
+                                </button>
                             </div>
                         )}
 
@@ -688,7 +791,13 @@ What would you like to know?`,
                                 <input
                                     type="text"
                                     value={input}
-                                    onChange={(e) => setInput(e.target.value)}
+                                    onChange={(e) => {
+                                        setInput(e.target.value);
+                                        // Clear error when user starts typing again
+                                        if (error) {
+                                            clearError();
+                                        }
+                                    }}
                                     placeholder="Ask about Azure, AI, etc..."
                                     className="flex-1 p-3 sm:p-4 bg-white rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 text-gray-900 placeholder-gray-500 text-sm sm:text-base"
                                     disabled={isLoading}

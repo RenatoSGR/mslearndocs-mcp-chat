@@ -163,6 +163,11 @@ export default async function handler(req, res) {
     content: `Based on the following Microsoft documentation context, please answer the question. Consider the previous conversation for continuity.\n\nContext from Microsoft Docs:\n${retrievedText}\n\nCurrent Question: ${message}` 
   });
 
+  // Set headers for Server-Sent Events (SSE)
+  res.setHeader('Content-Type', 'text/plain; charset=utf-8');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+
   const aiResponse = await fetch(azureUrl, {
     method: 'POST',
     headers: {
@@ -172,21 +177,67 @@ export default async function handler(req, res) {
     body: JSON.stringify({
       messages,
       max_tokens: 1000,
-      temperature: 0.7
+      temperature: 0.7,
+      stream: true
     }),
   });
 
   if (!aiResponse.ok) {
     const errorText = await aiResponse.text();
     console.error('Azure OpenAI Error:', errorText);
-    throw new Error('Failed to get a response from Azure OpenAI.');
+    res.write(`data: ${JSON.stringify({ error: 'Failed to get a response from Azure OpenAI.' })}\n\n`);
+    res.end();
+    return;
   }
 
-    const aiResponseData = await aiResponse.json();
-    const synthesizedAnswer = aiResponseData.choices[0]?.message?.content || "I'm sorry, I couldn't generate a response.";
+  // Stream the response using async iteration
+  try {
+    const decoder = new TextDecoder();
+    let buffer = '';
 
-    // Step 3: Send the Synthesized Answer Back to the Frontend
-    res.status(200).json({ reply: synthesizedAnswer });
+    // Use async iteration to read the stream
+    for await (const chunk of aiResponse.body) {
+      buffer += decoder.decode(chunk, { stream: true });
+      const lines = buffer.split('\n');
+      
+      // Keep the last incomplete line in the buffer
+      buffer = lines.pop() || '';
+      
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line.length > 6) {
+          const data = line.slice(6).trim();
+          
+          if (data === '[DONE]') {
+            res.write('data: [DONE]\n\n');
+            res.end();
+            return;
+          }
+          
+          try {
+            const parsed = JSON.parse(data);
+            const content = parsed.choices?.[0]?.delta?.content;
+            
+            if (content) {
+              // Send each chunk to the client
+              res.write(`data: ${JSON.stringify({ content })}\n\n`);
+            }
+          } catch (parseError) {
+            // Skip invalid JSON chunks
+            continue;
+          }
+        }
+      }
+    }
+
+    // Send final done signal
+    res.write('data: [DONE]\n\n');
+    res.end();
+
+  } catch (streamError) {
+    console.error('Streaming error:', streamError);
+    res.write(`data: ${JSON.stringify({ error: 'Streaming error occurred' })}\n\n`);
+    res.end();
+  }
 
   } catch (error) {
     console.error('[MCP] ❌ Error during MCP server request or AI processing:', error);
