@@ -216,101 +216,39 @@ const useMcp = () => {
     return { sendMessage, cancelRequest, clearError, isLoading, error };
 };
 
-// Custom Image Component for markdown with error handling
+// Simple Image Component for markdown (reverted to basic version)
 const MarkdownImage = ({ alt, src, title, ...props }) => {
     const [imageError, setImageError] = useState(false);
-    const [imageLoading, setImageLoading] = useState(true);
 
     const handleImageError = () => {
-        console.log('Image failed to load:', src);
         setImageError(true);
-        setImageLoading(false);
     };
 
-    const handleImageLoad = () => {
-        console.log('Image loaded successfully:', src);
-        setImageLoading(false);
-    };
+    // Simple URL processing - just ensure HTTPS for external URLs
+    const processedSrc = src && src.startsWith('http://') && !src.includes('localhost') 
+        ? src.replace('http://', 'https://') 
+        : src;
 
-    // Utility function to process image URLs
-    const processImageUrl = (url) => {
-        if (!url) return url;
-        
-        console.log('Processing image URL:', url);
-        
-        // If running in Azure Container Apps, ensure HTTPS for external images
-        if (url.startsWith('http://') && !url.includes('localhost')) {
-            const httpsUrl = url.replace('http://', 'https://');
-            console.log('Converted HTTP to HTTPS:', httpsUrl);
-            return httpsUrl;
-        }
-        
-        // Handle relative URLs by making them absolute
-        if (url.startsWith('//')) {
-            const absoluteUrl = `https:${url}`;
-            console.log('Made relative URL absolute:', absoluteUrl);
-            return absoluteUrl;
-        }
-        
-        // For Microsoft Learn docs images, ensure they use the correct domain
-        if (url.includes('learn.microsoft.com') || url.includes('docs.microsoft.com')) {
-            const httpsUrl = url.replace(/^http:/, 'https:');
-            console.log('Fixed Microsoft docs URL:', httpsUrl);
-            return httpsUrl;
-        }
-        
-        console.log('URL unchanged:', url);
-        return url;
-    };
-
-    const processedSrc = processImageUrl(src);
-
-    // If image failed to load, show fallback
-    if (imageError) {
+    if (imageError || !processedSrc) {
         return (
-            <div className="max-w-full bg-gray-100 border-2 border-dashed border-gray-300 rounded-lg p-6 my-2 text-center">
-                <div className="text-gray-500 mb-2">
-                    <svg className="w-12 h-12 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                    <p className="text-sm font-medium">Image could not be loaded</p>
-                    {alt && <p className="text-xs mt-1 text-gray-600">{alt}</p>}
-                    <p className="text-xs mt-1 text-gray-400 break-all">URL: {src}</p>
-                    {processedSrc && (
-                        <a 
-                            href={processedSrc} 
-                            target="_blank" 
-                            rel="noopener noreferrer"
-                            className="text-blue-600 hover:text-blue-800 underline text-xs mt-2 inline-block"
-                        >
-                            Try viewing image directly
-                        </a>
-                    )}
-                </div>
+            <div className="my-2 p-4 bg-gray-100 border border-gray-300 rounded-lg text-center text-gray-600">
+                <svg className="w-8 h-8 mx-auto mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 002 2v12a2 2 0 002 2z" />
+                </svg>
+                <p className="text-sm">Image could not be loaded</p>
+                {alt && <p className="text-xs mt-1">{alt}</p>}
             </div>
         );
     }
 
     return (
-        <div className="my-2 relative">
-            {imageLoading && (
-                <div className="absolute inset-0 bg-gray-100 rounded-lg flex items-center justify-center min-h-32 z-10">
-                    <div className="text-gray-500">
-                        <svg className="animate-spin w-6 h-6 mx-auto mb-2" fill="none" viewBox="0 0 24 24">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                        </svg>
-                        <p className="text-sm">Loading image...</p>
-                    </div>
-                </div>
-            )}
+        <div className="my-2">
             <img 
-                className="max-w-full h-auto rounded-lg shadow-md"
+                className="max-w-full h-auto rounded-lg shadow-sm"
                 alt={alt || "Image"}
                 src={processedSrc}
                 title={title}
                 onError={handleImageError}
-                onLoad={handleImageLoad}
                 loading="lazy"
                 {...props}
             />
@@ -632,8 +570,8 @@ What would you like to know?`,
         del: ({node, ...props}) => <del className="line-through opacity-75" {...props} />,
         mark: ({node, ...props}) => <mark className="bg-yellow-200 px-1 rounded" {...props} />,
         
-        // Enhanced image support with error handling and fallbacks
-        img: (props) => <MarkdownImage {...props} />,
+        // Simple image support
+        img: MarkdownImage,
     };
 
     // Function to render message content with markdown support
