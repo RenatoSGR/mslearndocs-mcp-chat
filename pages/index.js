@@ -791,7 +791,7 @@ What would you like to know?`,
                                     onClick={clearError}
                                     className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors text-sm font-medium"
                                 >
-                                    Dismiss Error
+                                    Dismiss & Try Again
                                 </button>
                             </div>
                         )}
